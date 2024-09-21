@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Устный Счётчик</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            height: 100vh;
+            font-size: 2.5em;
+        }
+        #difficultyScreen, #timeScreen, #game, #resultScreen {
+            display: none;
+            text-align: center;
+        }
+        .button {
+            padding: 20px 40px;
+            font-size: 1.5em;
+            cursor: pointer;
+            margin: 20px;
+        }
+        .answer {
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 1.5em;
+        }
+        .correct {
+            background-color: #28a745;
+        }
+        .incorrect {
+            background-color: #dc3545;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            font-size: 1.5em;
+        }
+        td, th {
+            padding: 10px;
+            text-align: center;
+        }
+        .wrong-answer {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Экран с выбором уровня сложности -->
+<div id="difficultyScreen">
+    <h1>Выберите уровень сложности:</h1>
+    <button class="button" onclick="chooseDifficulty(10)">До 10</button>
+    <button class="button" onclick="chooseDifficulty(20)">До 20</button>
+    <button class="button" onclick="chooseDifficulty(100)">До 100</button>
+</div>
+
+<!-- Экран с выбором времени на ответ -->
+<div id="timeScreen">
+    <h1>Выберите время на ответ:</h1>
+    <button class="button" onclick="chooseTime(3)">3 секунды</button>
+    <button class="button" onclick="chooseTime(5)">5 секунд</button>
+    <button class="button" onclick="chooseTime(10)">10 секунд</button>
+    <button class="button" onclick="chooseTime(15)">15 секунд</button>
+    <button class="button" onclick="chooseTime(20)">20 секунд</button>
+</div>
+
+<!-- Игровой экран -->
+<div id="game">
+    <h2 id="question"></h2>
+    <div id="answers"></div>
+    <div class="feedback" id="feedback"></div>
+</div>
+
+<!-- Экран результатов -->
+<div id="resultScreen">
+    <h2>Ваши результаты</h2>
+    <table id="resultsTable">
+        <tr>
+            <th>Пример</th>
+            <th>Ваш ответ</th>
+            <th>Правильный ответ</th>
+        </tr>
+    </table>
+    <button class="button" onclick="repeatGame()">Повторить игру</button>
+</div>
+
+<script>
+    let maxNumber = 10;
+    let timeLimit = 5;
+    let currentQuestion = 0;
+    let correctAnswer = null;
+    let timer = null;
+    let questions = [];
+    let answersGiven = [];
+
+    // Показ начального экрана с выбором сложности
+    window.onload = function() {
+        document.getElementById('difficultyScreen').style.display = 'block';
+    }
+
+    // Функция выбора уровня сложности
+    function chooseDifficulty(max) {
+        maxNumber = max;
+        document.getElementById('difficultyScreen').style.display = 'none';
+        document.getElementById('timeScreen').style.display = 'block';
+    }
+
+    // Функция выбора времени ответа
+    function chooseTime(time) {
+        timeLimit = time;
+        document.getElementById('timeScreen').style.display = 'none';
+        startGame();
+    }
+
+    // Начало игры
+    function startGame() {
+        document.getElementById('game').style.display = 'block';
+        currentQuestion = 0;
+        answersGiven = [];
+        questions = [];
+        generateQuestion();
+    }
+
+    // Генерация примера
+    function generateQuestion() {
+        const num1 = Math.floor(Math.random() * maxNumber) + 1;
+        const num2 = Math.floor(Math.random() * maxNumber) + 1;
+        const operation = Math.random() > 0.5 ? '+' : '-';
+        correctAnswer = operation === '+' ? num1 + num2 : num1 - num2;
+
+        if (correctAnswer < 0) {
+            return generateQuestion(); // Перегенерация, если результат отрицательный
+        }
+
+        questions.push({ num1, num2, operation, correctAnswer });
+        document.getElementById('question').textContent = `${num1} ${operation} ${num2} = ?`;
+        generateAnswers(correctAnswer);
+    }
+
+    // Генерация вариантов ответа
+    function generateAnswers(correct) {
+        const answers = [correct];
+        while (answers.length < 4) {
+            const wrongAnswer = correct + Math.floor(Math.random() * 5) - 2; // Генерация близкого неправильного ответа
+            if (!answers.includes(wrongAnswer) && wrongAnswer >= 0) {
+                answers.push(wrongAnswer);
+            }
+        }
+        answers.sort(() => Math.random() - 0.5);
+        displayAnswers(answers);
+    }
+
+    // Отображение ответов
+    function displayAnswers(answers) {
+        const answersDiv = document.getElementById('answers');
+        answersDiv.innerHTML = '';
+        answers.forEach(answer => {
+            const answerButton = document.createElement('div');
+            answerButton.classList.add('answer');
+            answerButton.textContent = answer;
+            answerButton.onclick = () => checkAnswer(answer);
+            answersDiv.appendChild(answerButton);
+        });
+
+        startTimer();
+    }
+
+    // Запуск таймера
+    function startTimer() {
+        let timeLeft = timeLimit;
+        timer = setInterval(() => {
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                checkAnswer(null); // Время вышло
+            } else {
+                console.log("Осталось времени: " + timeLeft);
+                timeLeft--;
+            }
+        }, 1000);
+    }
+
+    // Проверка ответа
+    function checkAnswer(selected) {
+        clearInterval(timer);
+        const feedbackDiv = document.getElementById('feedback');
+        let isCorrect = selected === correctAnswer;
+
+        if (isCorrect) {
+            feedbackDiv.textContent = "Правильно!";
+        } else {
+            feedbackDiv.textContent = `Неправильно! Правильный ответ: ${correctAnswer}`;
+        }
+
+        answersGiven.push({
+            question: `${questions[currentQuestion].num1} ${questions[currentQuestion].operation} ${questions[currentQuestion].num2}`,
+            selectedAnswer: selected === null ? 'Время истекло' : selected,
+            correctAnswer,
+            isCorrect
+        });
+
+        document.querySelectorAll('.answer').forEach(btn => {
+            if (parseInt(btn.textContent) === correctAnswer) {
+                btn.classList.add('correct');
+            } else if (parseInt(btn.textContent) === selected) {
+                btn.classList.add('incorrect');
+            }
+        });
+
+        currentQuestion++;
+        if (currentQuestion < 10) {
+            setTimeout(generateQuestion, 2000); // Следующий пример через 2 секунды
+        } else {
+            setTimeout(showResults, 2000); // Показать результаты после последнего примера
+        }
+    }
+
+    // Показ результатов
+    function showResults() {
+        document.getElementById('game').style.display = 'none';
+        document.getElementById('resultScreen').style.display = 'block';
+        const resultsTable = document.getElementById('resultsTable');
+        resultsTable.innerHTML = `<tr><th>Пример</th><th>Ваш ответ</th><th>Правильный ответ</th></tr>`;
+        answersGiven.forEach(answer => {
+            const row = resultsTable.insertRow();
+            const exampleCell = row.insertCell(0);
+            const userAnswerCell = row.insertCell(1);
+            const correctAnswerCell = row.insertCell(2);
+            exampleCell.textContent = answer.question;
+            userAnswerCell.textContent = answer.selectedAnswer;
+            correctAnswerCell.textContent = answer.correctAnswer;
+            if (!answer.isCorrect) {
+                userAnswerCell.classList.add('wrong-answer');
+            }
+        });
+    }
+
+    // Повтор игры
+    function repeatGame() {
+        location.reload();
+    }
+</script>
+
+</body>
+</html>
